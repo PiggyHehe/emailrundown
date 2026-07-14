@@ -1,0 +1,15 @@
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('bot is running!');
+});
+
+app.get('/api/rundown', (req, res) => {
+  res.json({ summary: "waiting for your logic!" });
+});
+
+app.listen(port, () => {
+  console.log(`server running on port ${port}`);
+});
