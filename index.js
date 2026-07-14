@@ -1,18 +1,36 @@
+const { google } = require('googleapis');
 const express = require('express');
 const app = express();
-const port = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-  res.send('bot is running!');
+const oauth2Client = new google.auth.OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  'https://emailbot-1uot.onrender.com/callback'
+);
+
+// 1. start the login flow
+app.get('/login', (req, res) => {
+  const url = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: ['https://www.googleapis.com/auth/gmail.readonly']
+  });
+  res.redirect(url);
 });
 
-// THIS IS THE PART YOU NEED TO ADD:
-app.get('/test-keys', (req, res) => {
-  const idPresent = process.env.CLIENT_ID ? "yes" : "no";
-  const secretPresent = process.env.CLIENT_SECRET ? "yes" : "no";
-  res.send(`client id found: ${idPresent}, client secret found: ${secretPresent}`);
+// 2. handle the callback and get the token
+app.get('/callback', async (req, res) => {
+  const { code } = req.query;
+  const { tokens } = await oauth2Client.getToken(code);
+  oauth2Client.setCredentials(tokens);
+  res.send('login successful! now you can /fetch-email');
 });
 
-app.listen(port, () => {
-  console.log(`server running on port ${port}`);
+// 3. fetch a recent email
+app.get('/fetch-email', async (req, res) => {
+  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  const response = await gmail.users.messages.list({ userId: 'me', maxResults: 1 });
+  const message = await gmail.users.messages.get({ userId: 'me', id: response.data.messages[0].id });
+  res.json({ snippet: message.data.snippet });
 });
+
+app.listen(3000);
